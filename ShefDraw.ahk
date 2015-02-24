@@ -22,6 +22,7 @@ Gosub, Set_config
 Width := A_ScreenWidth, Height := A_ScreenHeight
 Menu, Tray, Icon, Shell32.dll, 101
 Gui, 1: +LastFound +OwnDialogs
+
 Gui, 1: Default
 Gui, 1: Add, Picture, x10 y10 w%w_rect_area% h%h_rect_area% 0xE vCanvas
 
@@ -44,6 +45,9 @@ Menu, HelpMenu, Add, &Help, Help
 Menu, MyMenuBar, Add, &File, :FileMenu
 Menu, MyMenuBar, Add, &Edit, :EditMenu
 Menu, MyMenuBar, Add, &Help, :HelpMenu
+
+Menu, MyMenuBar, UseErrorLevel, On
+;~ SetTimer, Debug_Tip, 200
 
 line_width := 2
 pPen_Lines_black := Gdip_CreatePen(0xff000000, line_width)
@@ -95,6 +99,8 @@ else if ( Update_Opt = 2 )
 	Gosub, Redraw
 	Gosub, Redraw2
 }
+Win_ID := WinExist()
+
 ;~ ---------------------------------------------------------------------------------------------------------------
 ;~ ---------------------------------------------------------------------------------------------------------------
 ;~ ---------------------------CONFIG------------------------------------------------------------------------------
@@ -131,7 +137,11 @@ Saving_Delim := "|"
 Node_merge_distance := 10
 
 Max_bond_type := 1.5 
+Max_bond_type_2 := 2.2
 Max_bond_no := 4
+
+Inset_double_frac := 0.05
+;~ Inset_double_frac := 0.1
 
 ;~ ---------------------------------------------------------------------------------------------------------------
 ;~ ---------------------------------------------------------------------------------------------------------------
@@ -147,7 +157,33 @@ SetTimer, Node_Check, 75
 SetTimer, Click_Check, 50
 return
 
-#IfWinActive ShefDraw
+F10::
+Debug_Tip := ( Debug_Tip = 1 ) ? 0 : 1
+If ( Debug_Tip = 1 )
+{
+	SetTimer, Debug_Tip, 200
+	return
+}
+else
+{
+	SetTimer, Debug_Tip, Off
+	ToolTip
+	Return
+}
+	
+Debug_Tip:
+
+MouseGetPos, Debug_x, Debug_y
+
+ToolTip, %  "ErrorLevel" . " = " . """" . ErrorLevel . """" . "`r`n" . "a_thismenuitem" . " = " . """" . a_thismenuitem . """"  . "`r`n" . "A_ThisHotkey" . " = " . """" . A_ThisHotkey . """", %Debug_x%, %Debug_y%
+
+;~ ErrorLevel
+;~ a_thismenuitem
+
+return
+
+;~ #IfWinActive ShefDraw ahk_class AutohotkeyGUI
+#If ( Win_ID = WinExist("A") )
 ~LButton UP::
 Gosub, Redraw
 Gosub, Redraw2
@@ -203,17 +239,21 @@ MouseGetPos, c__Win_mx, c__Win_mY, c__Win_Win
 c__Win_mx -= Global_Mouse_Offset_x
 c__Win_mY -= Global_Mouse_Offset_y
 
-IfWinNotActive, ShefDraw
+;~ IfWinNotActive, ShefDraw ahk_class AutohotkeyGUI
+If ( Win_ID <> WinExist("A") )
 {
 	Click_Legit := 0
 	SetTimer, Click_Check, 150
 	Prev_click_check := 1
+	Hotkey, RBUtton, R_Sub, off
 	return
 }
 else if ( c__Win_mx < 0 ) or ( c__Win_mx > w_rect_area ) or ( c__Win_my < 0 ) or ( c__Win_my > h_rect_area )
 {
 	Click_Legit := 0
-	IfWinActive, ShefDraw
+	Hotkey, RBUtton, R_Sub, off
+	;~ IfWinActive, ShefDraw ahk_class AutohotkeyGUI
+	;~ If ( Win_ID = WinExist("A") )
 		If ( Right_on = 1 )
 		{
 			Right_on := 0
@@ -226,15 +266,17 @@ else if ( c__Win_mx < 0 ) or ( c__Win_mx > w_rect_area ) or ( c__Win_my < 0 ) or
 else
 {
 	Click_Legit := 1
-	IfWinActive, ShefDraw
-	If ( Right_on = 1 )
-	{
-		Right_on := 0
-		Gui, 2: Destroy
-		Hotkey, RButton, R_Sub, On
-		Hotkey, NumpadEnter, R_Sub_Submit, Off
-		Hotkey, Enter, R_Sub_Submit, Off
-	}
+	Hotkey, RBUtton, R_Sub, on
+	;~ IfWinActive, ShefDraw ahk_class AutohotkeyGUI
+	;~ If ( Win_ID = WinExist("A") )
+		If ( Right_on = 1 )
+		{
+			Right_on := 0
+			Gui, 2: Destroy
+			Hotkey, RButton, R_Sub, On
+			Hotkey, NumpadEnter, R_Sub_Submit, Off
+			Hotkey, Enter, R_Sub_Submit, Off
+		}
 }
 
 If ( Prev_click_check = 1 ) 
@@ -298,6 +340,7 @@ Delete		-	Delete selection
 
 Middle Click	-	Change bond type
 
+Ctrl Scroll		-	Zoom
 F1		-	Molecular weight of selection
 
 Arrow keys	-	Move selected nodes 1 pixel (+Shift to move 5)
@@ -316,7 +359,9 @@ O^+	Central Oxygen with superscript +
 Msgbox, 4096, ShefDraw help , % Help_String
 return
 
-#IfWinActive, ahk_class AutoHotkeyGUI
+;~ #IfWinActive, ahk_class AutoHotkeyGUI
+
+#If ( Win_ID = WinExist("A") )
 ^NumpadAdd::
 ^=::
 ^wheelup::
@@ -606,6 +651,11 @@ if ( Selected_Count > 1 )
 			X_High := ( X_High = "" ) ? ( Node%v%.x ) : ( Node%v%.x > X_High ) ? ( Node%v%.x ) : ( X_High )
 			Y_Low := ( Y_Low = "" ) ? ( Node%v%.Y ) : ( Node%v%.Y < Y_Low ) ? ( Node%v%.Y ) : ( Y_Low )
 			Y_High := ( Y_High = "" ) ? ( Node%v%.Y ) : ( Node%v%.Y > Y_High ) ? ( Node%v%.Y ) : ( Y_High )
+			
+			;~ for k2, v2 in node%v%.ListType
+				;~ If ( v2 = 2.1 )
+				;~ else if ( v2 = 2.2 )
+			
 		}
 	}
 	x := X_Low-10
@@ -908,7 +958,8 @@ Gosub, redraw
 Gosub, redraw2
 return
 
-#IfWinActive ShefDraw
+;~ #IfWinActive ShefDraw ahk_class AutohotkeyGUI
+#If ( Win_ID = WinExist("A") )
 Esc::
 Gosub, Exit
 return
@@ -964,7 +1015,12 @@ If ( RX > 0 ) and ( RX < w_rect_area ) and ( RY > 0 ) and ( RY < h_rect_area )
 else
 	Within_Bounds := 0
 
-WinGetPos, Win_x, Win_y, Win_w, Win_h, ShefDraw
+;~ WinGetPos, Win_x, Win_y, Win_w, Win_h, ShefDraw ahk_class AutohotkeyGUI
+WinGetPos, Win_x, Win_y, Win_w, Win_h, ahk_id %Win_ID%
+
+;~ Msgbox, 4096, , % "Message" . "`r`n" . "Win_x" . " = " . """" . Win_x . """" . "`r`n" . "Win_y" . " = " . """" . Win_y . """"
+
+
 RX += Win_x + 15
 RY += Win_y + 47
 SetTimer, Node_Check, off
@@ -1332,7 +1388,8 @@ return
 
 #If ( Click_Legit = 1 )
 ~LButton::
-IfWinNotActive, ShefDraw
+
+If ( Win_ID <> WinExist("A") )
 	return
 
 Sleep, 120
@@ -1467,7 +1524,8 @@ Loop
 		Accepting_Nodes := 1
 		Gosub, Redraw
 		Sep := Distance(MX1, MY1, MX2, MY2)
-		If ( Distance <> Default_Length )
+		
+		If ( Distance <> Default_Length ) and ( GetKeyState("Shift") = 0 )
 		{
 			If ( mx1 = mx2 )
 			{
@@ -1517,6 +1575,44 @@ Loop
 				}
 			}
 			Gdip_DrawLine(G, pPen_Lines_black, mX1 := (mx1), mY1 := (my1), mX2_ := (mx2), mY2_ := (My2))
+		}
+		else ;no snap
+		{
+			
+			Len := Distance(mx1, my1, mx2, my2)
+			A := (ACos(Distance(mx1, my1, mx1, my2)/Distance(mx1, my1, mx2, my2))) ;*57.2957795
+			Loop, Parse, Snap_angle_list, `,
+			{
+				If ( Abs(A*57.2957795-A_LoopField) < Snap_angle )
+				{
+					A :=A_LoopField/57.2957795
+					Break
+				}
+			}
+			
+			If ( mx2 > mx1 ) and ( my2 > my1 )
+			{
+				MX2 := MX1+Sin(a)*Len ;b
+				MY2 := MY1+Cos(a)*Len  ;a
+			}
+			else if ( mx2 < mx1 ) and ( my2 > my1 )
+			{
+				MX2 := MX1-Sin(a)*Len ;b
+				MY2 := MY1+Cos(a)*Len  ;a
+			}
+			else if ( mx2 > mx1 ) and ( my2 < my1 )
+			{
+				MX2 := MX1+Sin(a)*Len ;b
+				MY2 := MY1-Cos(a)*Len  ;a
+			}
+			else
+			{
+				MX2 := MX1-Sin(a)*Len ;b
+				MY2 := MY1-Cos(a)*Len  ;a
+			}
+			
+			Gdip_DrawLine(G, pPen_Lines_black, mX1 := (mx1), mY1 := (my1), mX2_ := (mx2), mY2_ := (My2))
+		
 		}
 		Gosub, redraw2
 	}
@@ -1760,7 +1856,8 @@ Gosub, redraw
 Gosub, redraw2
 return
 
-#IfWinActive, ShefDraw
+;~ #IfWinActive, ShefDraw ahk_class AutohotkeyGUI
+#If ( Win_ID = WinExist("A") )
 MButton::
 If ( Match_Node <> 2 )
 	return
@@ -1783,14 +1880,20 @@ If ( within_bounds = 0 )
 	SetTimer, Node_Check, On
 	return
 }
-else If ( Match_Node = 2 ) ;Break bond
+else If ( Match_Node = 2 )
 {
 	For k, v in Node%Bond_from_name%.PartnerList
 	{
 		If ( v = Bond_to_name )
 		{
-			Node%Bond_from_name%.PartnerListType[Bond_from_position] := ( Node%Bond_from_name%.PartnerListType[Bond_from_position] >= Max_bond_type ) ? ( 1 ) : ( Node%Bond_from_name%.PartnerListType[Bond_from_position] + 0.1 )
+			If ( Floor(Node%Bond_from_name%.PartnerListType[Bond_from_position]) = 1 )
+				Node%Bond_from_name%.PartnerListType[Bond_from_position] := ( Node%Bond_from_name%.PartnerListType[Bond_from_position] >= Max_bond_type ) ? ( 1 ) : ( Node%Bond_from_name%.PartnerListType[Bond_from_position] + 0.1 )
+			else If ( Floor(Node%Bond_from_name%.PartnerListType[Bond_from_position]) = 2 )
+				Node%Bond_from_name%.PartnerListType[Bond_from_position] := ( Node%Bond_from_name%.PartnerListType[Bond_from_position] >= Max_bond_type_2 ) ? ( 2 ) : ( Node%Bond_from_name%.PartnerListType[Bond_from_position] + 0.1 )
 			Node%Bond_from_name%.PartnerListType[Bond_from_position] := RegExReplace(Node%Bond_from_name%.PartnerListType[Bond_from_position], "D)0+$")
+			
+			Value := Node%Bond_from_name%.PartnerListType[Bond_from_position]
+			;~ Msgbox, 4096, , % "Message" . "`r`n" . "Value" . " = " . """" . Value . """"
 			break
 		}
 	}
@@ -1798,7 +1901,10 @@ else If ( Match_Node = 2 ) ;Break bond
 	{
 		If ( v = Bond_from_name )
 		{
-			Node%Bond_from_name%.PartnerList0Type[Bond_from_position] := ( Node%Bond_from_name%.PartnerList0Type[Bond_from_position] >= Max_bond_type ) ? ( 1 ) : ( Node%Bond_from_name%.PartnerList0Type[Bond_from_position] + 0.1 )
+			If ( Floor(Node%Bond_from_name%.PartnerListType[Bond_from_position]) = 1 )
+				Node%Bond_from_name%.PartnerList0Type[Bond_from_position] := ( Node%Bond_from_name%.PartnerList0Type[Bond_from_position] >= Max_bond_type ) ? ( 1 ) : ( Node%Bond_from_name%.PartnerList0Type[Bond_from_position] + 0.1 )
+			else If ( Floor(Node%Bond_from_name%.PartnerListType[Bond_from_position]) = 2 )
+				Node%Bond_from_name%.PartnerList0Type[Bond_from_position] := ( Node%Bond_from_name%.PartnerList0Type[Bond_from_position] >= Max_bond_type+2 ) ? ( 2 ) : ( Node%Bond_from_name%.PartnerList0Type[Bond_from_position] + 0.1 )
 			break
 		}
 	}
@@ -1808,6 +1914,106 @@ else If ( Match_Node = 2 ) ;Break bond
 In_Process := 0
 SetTimer, Node_Check, On
 return
+
+;~ reverese bond direction
+^MButton::
+
+If ( Match_Node <> 2 )
+	return
+In_Process := 3
+SetTimer, Node_Check, Off
+
+MouseGetPos, RX, RY
+RX -= Global_mouse_offset_x
+RY -= Global_mouse_offset_y
+
+If ( RX > 0 ) and ( RX < w_rect_area ) and ( RY > 0 ) and ( RY<h_rect_area )
+	Within_Bounds := 1
+else
+	Within_Bounds := 0
+
+If ( Match_Node = 2 )
+{
+;~ Msgbox, 4096, , % "Message" . "`r`n" . "Bond_From_Name" . " = " . """" . Bond_From_Name . """" . "`r`n" . "Bond_To_Name" . " = " . """" . Bond_To_Name . """"
+	
+	Pos_s := 
+	Val_s :=
+	For k_s, v_s in Node%Bond_From_Name%.PartnerList
+	{
+		If ( Bond_to_name = v_s )
+		{
+			Pos_s := k_s
+			Val_s := Node%Bond_From_Name%.PartnerListType[k_s]
+			;~ Msgbox, 4096, , % "1" . "`r`n" . "Bond_to_name" . " = " . """" . Bond_to_name . """" . "`r`n" . "Val_s" . " = " . """" . Val_s . """" . "`r`n" . "k_s" . " = " . """" . k_s . """"
+			Node%Bond_From_Name%.PartnerList0.Insert(Bond_to_name)
+			Node%Bond_From_Name%.PartnerList0Type.Insert(Val_s)
+			Node%Bond_From_Name%.PartnerList.Remove(k_s)
+			Node%Bond_From_Name%.PartnerListType.Remove(k_s)
+			break
+		}
+	}
+	
+	If ( Pos_s = "" )
+	{
+		Pos_s2 := 
+		Val_s2 :=
+		For k_s, v_s in Node%Bond_to_name%.PartnerList
+		{
+			If ( Bond_From_Name = v_s )
+			{
+				Pos_s2 := k_s
+				Val_s2 := Node%Bond_to_name%.PartnerListType[k_s]
+				;~ Msgbox, 4096, , % "3" . "`r`n" . "Bond_to_name" . " = " . """" . Bond_to_name . """" . "`r`n" . "Val_s" . " = " . """" . Val_s . """" . "`r`n" . "k_s" . " = " . """" . k_s . """"
+				Node%Bond_to_name%.PartnerList0.Insert(Bond_From_Name)
+				Node%Bond_to_name%.PartnerList0Type.Insert(Val_s2)
+				Node%Bond_to_name%.PartnerList.Remove(k_s)
+				Node%Bond_to_name%.PartnerListType.Remove(k_s)
+				break
+			}
+		}
+		For k_s, v_s in Node%Bond_From_Name%.PartnerList0
+		{
+			If ( Bond_to_name = v_s )
+			{
+				Pos_s := k_s
+				;~ Val_s := Node%Bond_From_Name%.PartnerList0Type[k_s]
+				;~ Msgbox, 4096, , % "2" . "`r`n" . "Bond_to_name" . " = " . """" . Bond_to_name . """" . "`r`n" . "Val_s" . " = " . """" . Val_s . """" . "`r`n" . "k_s" . " = " . """" . k_s . """"
+				Node%Bond_From_Name%.PartnerList.Insert(Bond_to_name)
+				Node%Bond_From_Name%.PartnerListType.Insert(Val_s)
+				Node%Bond_From_Name%.PartnerList0.Remove(k_s)
+				Node%Bond_From_Name%.PartnerList0Type.Remove(k_s)
+				break
+			}
+		}
+	}
+	else
+	{
+		For k_s, v_s in Node%Bond_to_name%.PartnerList0
+		{
+			If ( Bond_from_name = v_s )
+			{
+				Pos_s2 := k_s
+				;~ Val_s2 := Node%Bond_to_name%.PartnerList0Type[k_s]
+				;~ Msgbox, 4096, , % "4" . "`r`n" . "Bond_to_name" . " = " . """" . Bond_to_name . """" . "`r`n" . "Val_s" . " = " . """" . Val_s . """" . "`r`n" . "k_s" . " = " . """" . k_s . """"
+				Node%Bond_to_name%.PartnerList.Insert(Bond_From_Name)
+				Node%Bond_to_name%.PartnerListType.Insert(Val_s)
+				Node%Bond_to_name%.PartnerList0.Remove(k_s)
+				Node%Bond_to_name%.PartnerList0Type.Remove(k_s)
+				break
+			}
+		}
+	}
+	
+	
+
+	Gosub, redraw
+	Gosub, redraw2
+}
+In_Process := 0
+SetTimer, Node_Check, On
+
+return
+
 
 #If
 #If ( Match_Node = 1 )
@@ -2134,6 +2340,15 @@ Gosub, redraw
 Gosub, redraw2
 return
 
+!s::
+Name := Node_high.name
+Symbol := "Si"
+Node%Name%.Display := 1
+Node%Name%.Symbol := Symbol
+Gosub, redraw
+Gosub, redraw2
+return
+
 !b::
 Name := Node_high.name
 Symbol := "Br"
@@ -2240,7 +2455,8 @@ pHover_y := Hover_y
 SetTimer, Node_Check, on
 return
 
-#IfWinActive, ahk_class AutoHotkeyGUI
+;~ #IfWinActive, ahk_class AutoHotkeyGUI
+#If ( WIn_ID = WinExist("A") )
 F1::
 Hotkey, RButton, R_Sub, Off
 _C := 0
@@ -2576,6 +2792,77 @@ If ( Node_Count > 0 )
 					}
 				}
 			}
+			else if ( Node%v%.PartnerListType[k2] = 2.1 ) ;double bond, offset one side
+			{
+				t_dist := Distance(Node%v%.x, Node%v%.y, Node%v2%.x, Node%v2%.y)
+				If ( Node%v%.y = Node%v2%.y ) ; on same y axis, horizontal
+				{
+					Gdip_DrawLine(G, Select_this = 0 ? pPen_Lines_black : pPen_Lines_blue, Node%v%.x, Node%v%.y, Node%v2%.x, Node%v2%.y)
+					Gdip_DrawLine(G, Select_this = 0 ? pPen_Lines_black : pPen_Lines_blue, ( Node%v%.x > Node%v2%.x ) ? ( Node%v%.x - t_dist*Inset_double_frac ) : ( Node%v%.x + t_dist*Inset_double_frac ) , Node%v%.y-(Mult_bond_sep), ( Node%v2%.x > Node%v%.x ) ? ( Node%v2%.x - t_dist*Inset_double_frac ) : ( Node%v2%.x + t_dist*Inset_double_frac ), Node%v2%.y-(Mult_bond_sep))
+				}
+				else If ( Node%v%.x = Node%v2%.x ) ; on same x axis, vertical
+				{
+					Gdip_DrawLine(G, Select_this = 0 ? pPen_Lines_black : pPen_Lines_blue, Node%v%.x, Node%v%.y, Node%v2%.x, Node%v2%.y)
+					Gdip_DrawLine(G, Select_this = 0 ? pPen_Lines_black : pPen_Lines_blue, Node%v%.x-(Mult_bond_sep), ( Node%v%.y > Node%v2%.y ) ? ( Node%v%.y - t_dist*Inset_double_frac ) : ( Node%v%.y + t_dist*Inset_double_frac ), Node%v2%.x-(Mult_bond_sep), ( Node%v2%.y > Node%v%.y ) ? ( Node%v2%.y - t_dist*Inset_double_frac ) : ( Node%v2%.y + t_dist*Inset_double_frac ))
+				}
+				else ;diagonal
+				{
+					A2 := conv_angle(angle_node(v, v2))
+					x_sep := Abs(Cos(A2/57.2957795)*Mult_bond_sep)
+					y_sep := Abs(Sin(A2/57.2957795)*Mult_bond_sep)
+					m := -1*(Node%v2%.y-Node%v%.y)/(Node%v2%.x-Node%v%.x)
+					If ( m > 0 )
+					{
+						Gdip_DrawLine(G, Select_this = 0 ? pPen_Lines_black : pPen_Lines_blue, Node%v%.x, Node%v%.y, Node%v2%.x, Node%v2%.y) 
+						x_mid := ((Node%v%.x + x_sep)+(Node%v2%.x + x_sep))/2
+						y_mid := ((Node%v%.y + y_sep)+(Node%v2%.y + y_sep))/2
+						Gdip_DrawLine(G, Select_this = 0 ? pPen_Lines_black : pPen_Lines_blue, (x_mid*Inset_double_frac*2)+((1-Inset_double_frac*2)*(Node%v%.x+x_sep)), (y_mid*Inset_double_frac*2)+((1-Inset_double_frac*2)*(Node%v%.y+y_sep)), (x_mid*Inset_double_frac*2)+((1-Inset_double_frac*2)*(Node%v2%.x+x_sep)), (y_mid*Inset_double_frac*2)+((1-Inset_double_frac*2)*(Node%v2%.y+y_sep))) 
+					}
+					else
+					{
+						Gdip_DrawLine(G, Select_this = 0 ? pPen_Lines_black : pPen_Lines_blue, Node%v%.x, Node%v%.y, Node%v2%.x, Node%v2%.y) 
+						x_mid := ((Node%v%.x + x_sep)+(Node%v2%.x + x_sep))/2
+						y_mid := ((Node%v%.y - y_sep)+(Node%v2%.y - y_sep))/2
+						Gdip_DrawLine(G, Select_this = 0 ? pPen_Lines_black : pPen_Lines_blue, (x_mid*Inset_double_frac*2)+((1-Inset_double_frac*2)*(Node%v%.x+x_sep)), (y_mid*Inset_double_frac*2)+((1-Inset_double_frac*2)*(Node%v%.y-y_sep)), (x_mid*Inset_double_frac*2)+((1-Inset_double_frac*2)*(Node%v2%.x+x_sep)), (y_mid*Inset_double_frac*2)+((1-Inset_double_frac*2)*(Node%v2%.y-y_sep))) 
+					}
+				}
+			}
+			else if ( Node%v%.PartnerListType[k2] = 2.2 ) ;double bond, offset one side
+			{
+				If ( Node%v%.y = Node%v2%.y ) ; on same y axis, horizontal
+				{
+					Gdip_DrawLine(G, Select_this = 0 ? pPen_Lines_black : pPen_Lines_blue, Node%v%.x, Node%v%.y, Node%v2%.x, Node%v2%.y)
+					;~ Gdip_DrawLine(G, Select_this = 0 ? pPen_Lines_black : pPen_Lines_blue, Node%v%.x, Node%v%.y+(Mult_bond_sep), Node%v2%.x, Node%v2%.y+(Mult_bond_sep))
+					Gdip_DrawLine(G, Select_this = 0 ? pPen_Lines_black : pPen_Lines_blue, ( Node%v%.x > Node%v2%.x ) ? ( Node%v%.x - t_dist*Inset_double_frac ) : ( Node%v%.x + t_dist*Inset_double_frac ) , Node%v%.y+(Mult_bond_sep), ( Node%v2%.x > Node%v%.x ) ? ( Node%v2%.x - t_dist*Inset_double_frac ) : ( Node%v2%.x + t_dist*Inset_double_frac ), Node%v2%.y+(Mult_bond_sep))
+				}
+				else If ( Node%v%.x = Node%v2%.x ) ; on same x axis, vertical
+				{
+					Gdip_DrawLine(G, Select_this = 0 ? pPen_Lines_black : pPen_Lines_blue, Node%v%.x, Node%v%.y, Node%v2%.x, Node%v2%.y)
+					;~ Gdip_DrawLine(G, Select_this = 0 ? pPen_Lines_black : pPen_Lines_blue, Node%v%.x+(Mult_bond_sep), Node%v%.y, Node%v2%.x+(Mult_bond_sep), Node%v2%.y)
+					Gdip_DrawLine(G, Select_this = 0 ? pPen_Lines_black : pPen_Lines_blue, Node%v%.x+(Mult_bond_sep), ( Node%v%.y > Node%v2%.y ) ? ( Node%v%.y - t_dist*Inset_double_frac ) : ( Node%v%.y + t_dist*Inset_double_frac ), Node%v2%.x+(Mult_bond_sep), ( Node%v2%.y > Node%v%.y ) ? ( Node%v2%.y - t_dist*Inset_double_frac ) : ( Node%v2%.y + t_dist*Inset_double_frac ))
+				}
+				else ;diagonal
+				{
+					A2 := conv_angle(angle_node(v, v2))
+					x_sep := -1*Abs(Cos(A2/57.2957795)*Mult_bond_sep)
+					y_sep := -1*Abs(Sin(A2/57.2957795)*Mult_bond_sep)
+					m := -1*(Node%v2%.y-Node%v%.y)/(Node%v2%.x-Node%v%.x)
+					If ( m > 0 )
+					{
+						Gdip_DrawLine(G, Select_this = 0 ? pPen_Lines_black : pPen_Lines_blue, Node%v%.x, Node%v%.y, Node%v2%.x, Node%v2%.y) 
+						x_mid := ((Node%v%.x + x_sep)+(Node%v2%.x + x_sep))/2
+						y_mid := ((Node%v%.y + y_sep)+(Node%v2%.y + y_sep))/2
+						Gdip_DrawLine(G, Select_this = 0 ? pPen_Lines_black : pPen_Lines_blue, (x_mid*Inset_double_frac*2)+((1-Inset_double_frac*2)*(Node%v%.x+x_sep)), (y_mid*Inset_double_frac*2)+((1-Inset_double_frac*2)*(Node%v%.y+y_sep)), (x_mid*Inset_double_frac*2)+((1-Inset_double_frac*2)*(Node%v2%.x+x_sep)), (y_mid*Inset_double_frac*2)+((1-Inset_double_frac*2)*(Node%v2%.y+y_sep))) 
+					}
+					else
+					{
+						Gdip_DrawLine(G, Select_this = 0 ? pPen_Lines_black : pPen_Lines_blue, Node%v%.x, Node%v%.y, Node%v2%.x, Node%v2%.y) 
+						x_mid := ((Node%v%.x + x_sep)+(Node%v2%.x + x_sep))/2
+						y_mid := ((Node%v%.y - y_sep)+(Node%v2%.y - y_sep))/2
+						Gdip_DrawLine(G, Select_this = 0 ? pPen_Lines_black : pPen_Lines_blue, (x_mid*Inset_double_frac*2)+((1-Inset_double_frac*2)*(Node%v%.x+x_sep)), (y_mid*Inset_double_frac*2)+((1-Inset_double_frac*2)*(Node%v%.y-y_sep)), (x_mid*Inset_double_frac*2)+((1-Inset_double_frac*2)*(Node%v2%.x+x_sep)), (y_mid*Inset_double_frac*2)+((1-Inset_double_frac*2)*(Node%v2%.y-y_sep))) 
+					}
+				}
+			}
 			else if ( Node%v%.PartnerListType[k2] = 3 ) ;triple bond
 			{
 				Gdip_DrawLine(G, Select_this = 0 ? pPen_Lines_black : pPen_Lines_blue, Node%v%.x, Node%v%.y, Node%v2%.x, Node%v2%.y) ;regular single
@@ -2870,7 +3157,8 @@ Swap(ByRef XIn, ByRef YIn)
     YIn := temp
 }
 
-#IfWinActive, ahk_class AutoHotkeyGUI
+;~ #IfWinActive, ahk_class AutoHotkeyGUI
+#If ( WIn_ID = WinExist("A") )
 F2::
 Hotkey, RButton, R_Sub, Off
 Out :=
@@ -2936,7 +3224,7 @@ else
 
 			FileAppend, %TextToSave%, %file%
 			Gui, 1: Show, , ShefDraw - %Default_Name%
-			TrayTip, Splash capture, Saved!, 1
+			TrayTip, ShefDraw, Saved!, 1
 		}
 	}
 	else
@@ -2946,7 +3234,7 @@ else
 			TextToSave .= Saving_Delim . v . "-name" . Yaml_Dump(Node%v%)
 		FileAppend, %TextToSave%, %file%
 		Gui, 1: Show, , ShefDraw - %Default_Name%
-		TrayTip, Splash capture, Saved!, 1
+		TrayTip, ShefDraw, Saved!, 1
 	}
 
 }
@@ -3379,3 +3667,4 @@ If (MY < MYend)
 w_Snap := MXend-MX
 h_Snap := MYend-MY
 return
+
