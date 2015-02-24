@@ -14,5 +14,5 @@ Using AutoHotKey and
 	
 ========
 	
-Launch "ShefDraw.exe" to run.
-Alternatively, if you have autohotkey installed, you can launch "ShefDraw.ahk"
+Launch "ShefDraw.ahk" to run.
+(Requires installation of the autohotkey scripting language)
